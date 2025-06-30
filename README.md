@@ -5,7 +5,7 @@ This project is a Spring Boot-based RESTful API for a fashion store, **Mickel Ke
 
 ## Tools Used
 
-- Java 11 (but only Java 8 features used as mentioned)
+- Java 17 (but only Java 8 features used as mentioned)
 - Spring Boot 3.x
 - Maven
 - JUnit 5
