@@ -1,8 +1,5 @@
 package com.mk.rewards.policy;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class DefaultRewardPolicy implements RewardPolicy {
 
     @Override

@@ -4,8 +4,8 @@ import com.mk.rewards.dto.RewardSummaryResponse;
 import com.mk.rewards.exception.CustomerNotFoundException;
 import com.mk.rewards.model.Transaction;
 import com.mk.rewards.policy.RewardPolicy;
+import com.mk.rewards.policy.DefaultRewardPolicy;
 import com.mk.rewards.repository.InMemoryTransactionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import org.slf4j.Logger;
@@ -23,25 +23,28 @@ public class RewardService {
 
     private static final Logger log = LoggerFactory.getLogger(RewardService.class);
 
-    @Autowired
-    public RewardService(InMemoryTransactionRepository repository, RewardPolicy rewardPolicy) {
-        this.repository = repository;
-        this.rewardPolicy = rewardPolicy;
+    public RewardService() {
+        this.repository = new InMemoryTransactionRepository();
+        this.rewardPolicy = new DefaultRewardPolicy();
     }
 
     public RewardSummaryResponse calculateRewards(String customerId, LocalDate fromDate, LocalDate toDate) {
         log.info("Calculating rewards for customerId={} from {} to {}", customerId, fromDate, toDate);
-        List<Transaction> allTransactions = repository.getAllTransactions();
-
-        List<Transaction> filtered = new ArrayList<>();
-        for (Transaction txn : allTransactions) {
-            if (txn.getCustomerId().equalsIgnoreCase(customerId)) {
-                if ((fromDate == null || !txn.getTransactionDate().isBefore(fromDate)) &&
-                        (toDate == null || !txn.getTransactionDate().isAfter(toDate))) {
-                    filtered.add(txn);
-                }
-            }
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            log.warn("Invalid date range: fromDate {} is after toDate {}", fromDate, toDate);
+            throw new IllegalArgumentException("Invalid date range: fromDate cannot be after toDate.");
         }
+
+        List<Transaction> allTransactions = repository.getAllTransactions();
+        boolean customerExists = allTransactions.stream()
+            .anyMatch(txn -> txn.getCustomerId().equalsIgnoreCase(customerId));
+
+        if (!customerExists) {
+            log.warn("Customer ID '{}' not found in transaction records", customerId);
+            throw new CustomerNotFoundException("No customer found with ID: " + customerId);
+        }
+
+        List<Transaction> filtered = repository.getTransactions(customerId, fromDate, toDate);
 
         Map<String, Integer> monthlyPoints = new LinkedHashMap<>();
         int totalPoints = 0;
@@ -57,7 +60,7 @@ public class RewardService {
         String customerName = filtered.isEmpty() ? "" : filtered.get(0).getCustomerName();
         if (filtered.isEmpty()) {
             log.warn("No transactions found for customerId={} in given date range", customerId);
-            throw new CustomerNotFoundException("No transactions found for customer ID: " + customerId);
+            throw new CustomerNotFoundException("No transactions found for the given date range for customer ID: " + customerId);
         }
 
         log.debug("Reward calculation complete. Total points: {}", totalPoints);

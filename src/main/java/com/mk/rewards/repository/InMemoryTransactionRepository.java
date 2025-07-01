@@ -23,4 +23,11 @@ public class InMemoryTransactionRepository {
             new Transaction("TXN1009", "CUST004", "Sita Devi", 200.0, LocalDate.of(2024, 6, 30))
         );
     }
+    public List<Transaction> getTransactions(String customerId, LocalDate from, LocalDate to) {
+        return getAllTransactions().stream()
+                .filter(txn -> txn.getCustomerId().equalsIgnoreCase(customerId))
+                .filter(txn -> (from == null || !txn.getTransactionDate().isBefore(from)) &&
+                               (to == null || !txn.getTransactionDate().isAfter(to)))
+                .toList();
+    }
 }

@@ -1,8 +1,7 @@
 package com.mk.rewards.service;
 
-import com.mk.rewards.model.Transaction;
-import com.mk.rewards.policy.RewardPolicy;
-import com.mk.rewards.repository.InMemoryTransactionRepository;
+import com.mk.rewards.policy.DefaultRewardPolicy;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,13 +15,7 @@ public class RewardServiceTest {
 
     @BeforeEach
     public void setup() {
-        InMemoryTransactionRepository repo = new InMemoryTransactionRepository(); // has test data
-        RewardPolicy policy = amount -> {
-            if (amount <= 50) return 0;
-            else if (amount <= 100) return (int)(amount - 50);
-            else return (int)(2 * (amount - 100) + 50);
-        };
-        rewardService = new RewardService(repo, policy); // using constructor
+        rewardService = new RewardService(); // using default constructor
     }
 
     @Test
@@ -39,6 +32,17 @@ public class RewardServiceTest {
         assertEquals(5, response.getTransactions().size());
         assertTrue(response.getTotalRewards() > 0);
     }
+
+    @Test
+    public void testInvalidDateRangeThrowsException() {
+        LocalDate from = LocalDate.of(2024, 7, 1);
+        LocalDate to = LocalDate.of(2024, 6, 30);
+        Exception ex = assertThrows(IllegalArgumentException.class, () -> {
+            rewardService.calculateRewards("CUST001", from, to);
+        });
+        assertTrue(ex.getMessage().contains("Invalid date range"));
+    }
+
 
     @Test
     public void testCustomerNotFoundThrowsException() {
@@ -82,5 +86,29 @@ public class RewardServiceTest {
         assertEquals("CUST003", response.getCustomerId());
         assertFalse(response.getTransactions().isEmpty());
         assertTrue(response.getTotalRewards() > 0);
+    }
+
+    @Test
+    public void testRewardPoints_amountZero() {
+        int reward = new DefaultRewardPolicy().calculate(0);
+        assertEquals(0, reward, "Amount 0 should yield 0 points");
+    }
+
+    @Test
+    public void testRewardPoints_amountFifty() {
+        int reward = new DefaultRewardPolicy().calculate(50);
+        assertEquals(0, reward, "Amount 50 should yield 0 points");
+    }
+
+    @Test
+    public void testRewardPoints_amountHundred() {
+        int reward = new DefaultRewardPolicy().calculate(100);
+        assertEquals(50, reward, "Amount 100 should yield 50 points (1 point per dollar from 51 to 100)");
+    }
+
+    @Test
+    public void testRewardPoints_amountOneTwenty() {
+        int reward = new DefaultRewardPolicy().calculate(120);
+        assertEquals(90, reward, "Amount 120 = 50 points (51–100) + 40 points (2x20)");
     }
 }
