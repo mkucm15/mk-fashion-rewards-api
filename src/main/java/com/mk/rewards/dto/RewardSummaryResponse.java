@@ -6,6 +6,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * DTO representing the summary of reward points earned by a customer.
+ * Includes monthly and total reward calculations along with transaction history and optional date filtering.
+ */
 public class RewardSummaryResponse {
 
     private final String customerId;
@@ -16,6 +20,17 @@ public class RewardSummaryResponse {
     private final int totalRewards;
     private final List<Transaction> transactions;
 
+    /**
+     * Constructs a reward summary for the given customer and transaction data.
+     *
+     * @param customerId       customer ID
+     * @param customerName     name of the customer
+     * @param fromDate         optional start date of the reward period
+     * @param toDate           optional end date of the reward period
+     * @param monthlyRewards   reward points earned per month
+     * @param totalRewards     total reward points earned
+     * @param transactions     list of transactions included in the reward calculation
+     */
     public RewardSummaryResponse(String customerId, String customerName, LocalDate fromDate, LocalDate toDate,
                                  Map<String, Integer> monthlyRewards, int totalRewards,
                                  List<Transaction> transactions) {

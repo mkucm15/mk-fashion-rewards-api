@@ -8,6 +8,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+
+/**
+ * REST controller that exposes endpoints for retrieving customer reward summaries.
+ * Supports optional filtering by date range.
+ * Delegates business logic to RewardService.
+ */
 @RestController
 @RequestMapping("/api/rewards")
 public class RewardController {
@@ -16,6 +22,14 @@ public class RewardController {
     private RewardService rewardService;
 
     @GetMapping("/{customerId}")
+    /**
+     * Retrieves the reward summary for a specific customer.
+     *
+     * @param customerId the customer ID
+     * @param fromDate optional start date for filtering transactions (yyyy-MM-dd)
+     * @param toDate optional end date for filtering transactions (yyyy-MM-dd)
+     * @return reward summary for the specified customer and date range
+     */
     public RewardSummaryResponse getCustomerRewards(
             @PathVariable String customerId,
             @RequestParam(required = false)

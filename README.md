@@ -1,12 +1,15 @@
 # Mickel Keevs Fashion Rewards API
-This project is a Spring Boot-based RESTful API for a fashion store, **Mickel Keevs**, that manages customer reward points. The API computes monthly and total reward points based on transaction history and follows clean architectural principles, testability, and scalability.
-> Note: "Mickel Keevs" is a fictional brand name I used solely for the purpose of this technical assignment.
+
+This project is a Spring Boot-based RESTful API for a fashion store, Mickel Keevs, that manages customer reward points. The API calculates monthly and total rewards for customers based on their transaction history. It follows clean architectural practices and is designed for scalability, testability, and clarity.
+>Note: "Mickel Keevs" is a fictional brand name I used solely for this technical assignment.
 ---
 
 ## Tools Used
 
-- Java 17 (but only Java 8 features used as mentioned)
+- Java 17 (uses only Java 8 features as required)
 - Spring Boot 3.x
+- Spring Data JPA
+- H2 In-Memory Database
 - Maven
 - JUnit 5
 - SLF4J Logging
@@ -15,28 +18,27 @@ This project is a Spring Boot-based RESTful API for a fashion store, **Mickel Ke
 
 ## Reward Calculation Policy
 
-Reward points are earned per transaction:
+Reward points are awarded based on the amount of each transaction:
 
 - 1 point for every dollar spent between $50 and $100 (inclusive)
 - 2 points for every dollar spent above $100
 - No points for spending below $50
 
-**Example:**  
-$120 purchase → 1 × 50 + 2 × 20 = **90 points**
+Example:  
+A $120 purchase = 1 × 50 + 2 × 20 = 90 points
 
 ---
 
 ## What This Project Does
 
 - Clean layered architecture (Controller → Service → Repository)
-- Pluggable reward strategy via `RewardPolicy`
-- In-memory customer transaction data
-- Dynamic date-based filtering (monthly or custom range)
-- Monthly breakdown and total rewards
-- Global exception handling
-- Comprehensive test coverage with real-world scenarios
-- Lightweight logging for debugging and traceability
-- Fully DB-ready structure (can replace in-memory with JPA)
+- Use a real database via Spring Data JPA (H2 for simplicity)
+- SQL-based schema and test data (via schema.sql and data.sql)
+- Dynamic date filtering for custom or full reward range
+- Breaks reward logic into modular service methods
+- MockMvc and JUnit test coverage across controller and service layers
+- Global exception handling with user-friendly responses
+- Clear and structured REST API response
 
 ---
 
@@ -47,9 +49,9 @@ $120 purchase → 1 × 50 + 2 × 20 = **90 points**
 GET /api/rewards/{customerId}
 ```
 
-We can optionally provide query parameters:
-- fromDate (yyyy-MM-dd): Start date to filter rewards (e.g., 2024-04-01)
-- toDate (yyyy-MM-dd): End date to filter rewards (e.g., 2024-06-30)
+Optional query parameters:
+- fromDate (yyyy-MM-dd): Start date for filtering
+- toDate (yyyy-MM-dd): End date for filtering
 
 ### Example
 ```
@@ -93,6 +95,10 @@ mvn spring-boot:run
 
 API base URL: `http://localhost:8080`
 
+H2 Console (for database view):  
+`http://localhost:8080/h2-console`  
+JDBC URL: `jdbc:h2:mem:testdb`, User: `sa`
+
 ---
 
 Run tests with:
@@ -101,17 +107,10 @@ Run tests with:
 mvn test
 ```
 
-Covers:
-- Valid customer with rewards
-- Invalid customer exception
-- Customer with no rewards in range
-- One-month summary
-- Full summary without filters
-
 ---
 
 ## Author
 
 Author: MK (Murali Krishna), Backend Developer
 
-This project was submitted as part of a WebAPI Developer technical evaluation. It emphasizes simplicity, clarity, scalability, and production readiness.
+This project was completed as part of a WebAPI Developer technical evaluation. It reflects production-ready structure with clarity and modularity.

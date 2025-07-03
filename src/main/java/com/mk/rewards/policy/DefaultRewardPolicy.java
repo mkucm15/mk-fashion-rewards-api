@@ -1,5 +1,11 @@
 package com.mk.rewards.policy;
 
+/**
+ * Default implementation of the RewardPolicy interface.
+ * Calculates reward points based on a tiered structure:
+ * - 1 point for every dollar spent over $50 up to $100
+ * - 2 points for every dollar spent over $100
+ */
 public class DefaultRewardPolicy implements RewardPolicy {
 
     @Override
