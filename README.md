@@ -73,14 +73,7 @@ GET http://localhost:8080/api/rewards/CUST001?fromDate=2024-04-01&toDate=2024-06
     "2024-05": 40,
     "2024-06": 110
   },
-  "totalRewards": 240,
-  "transactions": [
-    {
-      "transactionId": "TXN1001",
-      "amount": 120.0,
-      "transactionDate": "2024-04-15"
-    }
-  ]
+  "totalRewards": 240
 }
 ```
 
