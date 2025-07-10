@@ -1,5 +1,4 @@
-
-/**
+/****
  * Service class responsible for calculating customer reward points
  * based on transaction data retrieved from the repository.
  * Supports optional date filtering and computes total and monthly reward summaries.
@@ -7,6 +6,7 @@
 package com.mk.rewards.service;
 
 import com.mk.rewards.dto.RewardSummaryResponse;
+import com.mk.rewards.dto.TransactionSummary;
 import com.mk.rewards.exception.CustomerNotFoundException;
 import com.mk.rewards.model.Transaction;
 import com.mk.rewards.policy.RewardPolicy;
@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class RewardService {
@@ -51,53 +52,52 @@ public class RewardService {
             throw new IllegalArgumentException("Invalid date range: fromDate cannot be after toDate.");
         }
 
-        List<Transaction> allCustomerTxns = repository.findByCustomerIdIgnoreCase(customerId);
-        if (allCustomerTxns.isEmpty()) {
-            log.warn("Customer ID '{}' not found in transaction records", customerId);
-            throw new CustomerNotFoundException("No customer found with ID: " + customerId);
+        List<Transaction> transactions;
+        if (fromDate != null && toDate != null) {
+            transactions = repository.findByCustomerIdIgnoreCaseAndTransactionDateBetween(customerId, fromDate, toDate);
+        } else {
+            transactions = repository.findByCustomerIdIgnoreCase(customerId);
         }
 
-        List<Transaction> filtered = repository.findByCustomerIdIgnoreCaseAndTransactionDateBetween(customerId, fromDate, toDate);
-        if (filtered.isEmpty()) {
-            log.warn("No transactions found for customerId={} in given date range", customerId);
-            String customerName = allCustomerTxns.get(0).getCustomerName();
-
-            // If no fromDate/toDate were specified, fall back to all transactions for reward calculation
-            if (fromDate == null && toDate == null) {
-                Map<String, Integer> monthlyPoints = calculateMonthlyPoints(allCustomerTxns);
-                int totalPoints = calculateTotalPoints(monthlyPoints);
-
-                LocalDate actualFrom = allCustomerTxns.stream().map(Transaction::getTransactionDate).min(LocalDate::compareTo).orElse(null);
-                LocalDate actualTo = allCustomerTxns.stream().map(Transaction::getTransactionDate).max(LocalDate::compareTo).orElse(null);
-
-                return new RewardSummaryResponse(customerId, customerName, actualFrom, actualTo, monthlyPoints, totalPoints, allCustomerTxns);
-            }
-
-            // Otherwise return zero rewards as filtered set is truly empty
-            return new RewardSummaryResponse(customerId, customerName, fromDate, toDate, Map.of(), 0, List.of());
+        if (transactions.isEmpty()) {
+            log.warn("No transactions found for customerId={} in given context", customerId);
+            throw new CustomerNotFoundException("No transactions found for customer ID: " + customerId);
         }
 
-        String customerName = filtered.get(0).getCustomerName();
-        Map<String, Integer> monthlyPoints = calculateMonthlyPoints(filtered);
+        String customerName = transactions.get(0).getCustomerName();
+        Map<String, Integer> monthlyPoints = calculateMonthlyPoints(transactions);
         int totalPoints = calculateTotalPoints(monthlyPoints);
 
+        // Determine actual from/to date range based on data if not provided
+        LocalDate actualFrom = fromDate;
+        LocalDate actualTo = toDate;
+        if (fromDate == null || toDate == null) {
+            List<LocalDate> dates = transactions.stream()
+                .map(Transaction::getTransactionDate)
+                .sorted()
+                .toList();
+            if (actualFrom == null) actualFrom = dates.get(0);
+            if (actualTo == null) actualTo = dates.get(dates.size() - 1);
+        }
+
+//        List<TransactionSummary> txnSummaries = transactions.stream()
+//            .map(txn -> new TransactionSummary(txn.getAmount(), txn.getTransactionDate()))
+//            .toList();
+
+        List<TransactionSummary> txnSummaries = (fromDate != null && toDate != null)
+                ? transactions.stream()
+                .map(txn -> new TransactionSummary(txn.getAmount(), txn.getTransactionDate()))
+                .toList()
+                : null;
         log.debug("Reward calculation complete. Total points: {}", totalPoints);
-
-        // Auto-adjust fromDate and toDate if they are null
-        LocalDate actualFrom = fromDate != null ? fromDate :
-                filtered.stream().map(Transaction::getTransactionDate).min(LocalDate::compareTo).orElse(null);
-
-        LocalDate actualTo = toDate != null ? toDate :
-                filtered.stream().map(Transaction::getTransactionDate).max(LocalDate::compareTo).orElse(null);
-
         return new RewardSummaryResponse(
                 customerId,
                 customerName,
-                actualFrom,
-                actualTo,
+                fromDate,
+                toDate,
                 monthlyPoints,
                 totalPoints,
-                filtered
+                txnSummaries
         );
     }
 
@@ -108,15 +108,12 @@ public class RewardService {
      * @return map of month (yyyy-MM) to earned points
      */
     private Map<String, Integer> calculateMonthlyPoints(List<Transaction> transactions) {
-        Map<String, Integer> monthlyPoints = new LinkedHashMap<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
-
-        for (Transaction txn : transactions) {
-            int points = rewardPolicy.calculate(txn.getAmount());
-            String month = txn.getTransactionDate().format(formatter);
-            monthlyPoints.put(month, monthlyPoints.getOrDefault(month, 0) + points);
-        }
-        return monthlyPoints;
+        return transactions.stream()
+            .collect(Collectors.groupingBy(
+                txn -> java.time.YearMonth.from(txn.getTransactionDate()).toString(),
+                LinkedHashMap::new,
+                Collectors.summingInt(txn -> rewardPolicy.calculate(txn.getAmount()))
+            ));
     }
 
     /**

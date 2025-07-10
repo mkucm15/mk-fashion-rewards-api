@@ -5,6 +5,7 @@
  */
 package com.mk.rewards.service;
 
+import com.mk.rewards.exception.CustomerNotFoundException;
 import com.mk.rewards.policy.DefaultRewardPolicy;
 import org.mockito.Mockito;
 import com.mk.rewards.repository.TransactionRepository;
@@ -51,6 +52,7 @@ public class RewardServiceTest {
         assertEquals("CUST001", response.getCustomerId());
         assertEquals("Murali Krishna", response.getCustomerName());
         assertEquals(3, response.getMonthlyRewards().size());
+        assertNotNull(response.getTransactions());
         assertEquals(5, response.getTransactions().size());
         assertTrue(response.getTotalRewards() > 0);
     }
@@ -68,11 +70,10 @@ public class RewardServiceTest {
 
     @Test
     public void testCustomerNotFoundThrowsException() {
-        Exception ex = assertThrows(RuntimeException.class, () -> {
+        Exception ex = assertThrows(CustomerNotFoundException.class, () -> {
             rewardService.calculateRewards("INVALID_ID", null, null);
         });
-
-        assertTrue(ex.getMessage().contains("No customer found"));
+        assertTrue(ex.getMessage().contains("No transactions found"));
     }
 
     @Test
@@ -86,13 +87,10 @@ public class RewardServiceTest {
         Mockito.when(mockRepository.findByCustomerIdIgnoreCase("CUST001")).thenReturn(allTxns);
         Mockito.when(mockRepository.findByCustomerIdIgnoreCaseAndTransactionDateBetween("CUST001", from, to)).thenReturn(List.of());
 
-        var response = rewardService.calculateRewards("CUST001", from, to);
-
-        assertNotNull(response);
-        assertEquals("CUST001", response.getCustomerId());
-        assertEquals(0, response.getTotalRewards());
-        assertTrue(response.getMonthlyRewards().isEmpty());
-        assertTrue(response.getTransactions().isEmpty());
+        Exception ex = assertThrows(CustomerNotFoundException.class, () -> {
+            rewardService.calculateRewards("CUST001", from, to);
+        });
+        assertTrue(ex.getMessage().contains("No transactions found"));
     }
 
     @Test
@@ -121,13 +119,12 @@ public class RewardServiceTest {
             new Transaction("TXN1007", "CUST003", "Ram Prasad", 101.0, LocalDate.of(2024, 5, 11))
         );
         Mockito.when(mockRepository.findByCustomerIdIgnoreCase("CUST003")).thenReturn(mockTransactions);
-        Mockito.when(mockRepository.findByCustomerIdIgnoreCaseAndTransactionDateBetween("CUST003", null, null)).thenReturn(List.of());
 
         var response = rewardService.calculateRewards("CUST003", null, null);
 
         assertNotNull(response);
         assertEquals("CUST003", response.getCustomerId());
-        assertFalse(response.getTransactions().isEmpty());
+        assertNull(response.getTransactions());
         assertTrue(response.getTotalRewards() > 0);
     }
 

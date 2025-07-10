@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.mk.rewards.exception.CustomerNotFoundException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -71,7 +72,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Object> handleCustomerNotFound(CustomerNotFoundException ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
-
+    /**
+     * Handles invalid format for query parameters (like invalid LocalDate).
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String paramName = ex.getName();
+        String message = "Invalid value for parameter '" + paramName + "'. Expected format: yyyy-MM-dd";
+        return buildErrorResponse(message, HttpStatus.BAD_REQUEST);
+    }
     private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status) {
         Map<String, Object> errorBody = new LinkedHashMap<>();
         errorBody.put("timestamp", LocalDateTime.now());
